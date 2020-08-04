@@ -72,7 +72,7 @@ def get_crawler_base_settings(config):
     }
 
 
-def crawler_process(crawler_id, config):
+def crawler_process(crawler_id, config, extra_signals):
     """Starts crawling."""
 
     output_path = config["output_path"]
@@ -103,6 +103,8 @@ def crawler_process(crawler_id, config):
     for crawler in process.crawlers:
         crawler.signals.connect(
             update_database, signal=scrapy.signals.spider_closed)
+        for sig in extra_signals:
+            crawler.signals.connect(extra_signals[sig], signal=sig)
 
     process.start()
 
@@ -112,7 +114,7 @@ def gen_key():
     return str(int(time.time() * 100)) + str((int(random.random() * 1000)))
 
 
-def start_crawler(config):
+def start_crawler(config, extra_signals=None):
     """Create and starts a crawler as a new process."""
 
     output_path = config["output_path"]
@@ -129,7 +131,7 @@ def start_crawler(config):
         f.write(json.dumps({"stop": False}))
 
     # starts new process
-    p = Process(target=crawler_process, args=(crawler_id, config))
+    p = Process(target=crawler_process, args=(crawler_id, config, extra_signals))
     p.start()
 
     return crawler_id

@@ -114,3 +114,8 @@ class StaticPageSpider(BaseSpider):
                     )
         else:
             self.store_raw(response)
+
+        # Yield an empty dict just to signal that the item was collected
+        # (not sure if there's any use for returning the collected data in our
+        # current setup)
+        yield {}

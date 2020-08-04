@@ -7,6 +7,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+import scrapy
+
 from .forms import CrawlRequestForm, RawCrawlRequestForm
 from .models import CrawlRequest, CrawlerInstance
 from .serializers import CrawlRequestSerializer, CrawlerInstanceSerializer
@@ -20,7 +22,21 @@ import time
 import crawlers.crawler_manager as crawler_manager
 
 # Helper methods
+def item_scraped(spider):
+    with transaction.atomic():
+        instance = CrawlerInstance.objects\
+                                  .filter(instance_id = spider.crawler_id)\
+                                  .get()
+        instance.collected += 1
+        instance.save()
 
+def request_sched(spider):
+    with transaction.atomic():
+        instance = CrawlerInstance.objects\
+                                  .filter(instance_id = spider.crawler_id)\
+                                  .get()
+        instance.scheduled += 1
+        instance.save()
 
 def process_run_crawl(crawler_id):
     instance = None
@@ -37,7 +53,7 @@ def process_run_crawl(crawler_id):
 
         del data['creation_date']
         del data['last_modified']
-        
+
         if data["output_path"] is None:
             data["output_path"] = CURR_FOLDER_FROM_ROOT
         else:
@@ -46,12 +62,16 @@ def process_run_crawl(crawler_id):
             else:
                 data["output_path"] = data["output_path"]
 
-        instance_id = crawler_manager.start_crawler(data)
+        signals = {
+            scrapy.signals.item_scraped: item_scraped,
+            scrapy.signals.request_scheduled: request_sched,
+        }
+
+        instance_id = crawler_manager.start_crawler(data, signals)
 
         instance = create_instance(data['id'], instance_id)
 
     return instance
-
 
 def process_stop_crawl(crawler_id):
     instance = CrawlRequest.objects.filter(id=crawler_id).get().running_instance
@@ -165,19 +185,25 @@ def run_crawl(request, crawler_id):
 
 
 def tail_log_file(request, instance_id):
+    instance_query = CrawlerInstance.objects.filter(instance_id=instance_id)
 
-
-    crawler_id = CrawlerInstance.objects.filter(instance_id=instance_id).values()[0]["crawler_id_id"]
+    # TODO refactor
+    crawler_id = instance_query.values()[0]["crawler_id_id"]
 
     config = CrawlRequest.objects.filter(id=int(crawler_id)).values()[0]
     output_path = config["output_path"]
 
     out = subprocess.run(["tail", f"{output_path}/log/{instance_id}.out", "-n", "10"], stdout=subprocess.PIPE).stdout
     err = subprocess.run(["tail", f"{output_path}/log/{instance_id}.err", "-n", "10"], stdout=subprocess.PIPE).stdout
+
+    instance = instance_query.get()
+
     return JsonResponse({
         "out": out.decode('utf-8'),
         "err": err.decode('utf-8'),
         "time": str(datetime.fromtimestamp(time.time())),
+        "scheduled": instance.scheduled,
+        "collected": instance.collected,
     })
 
 # API
