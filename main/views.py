@@ -40,36 +40,35 @@ def request_sched(spider):
 
 def process_run_crawl(crawler_id):
     instance = None
-    with transaction.atomic():
-        # Execute DB commands atomically
-        crawler_entry = CrawlRequest.objects.filter(id=crawler_id)
-        data = crawler_entry.values()[0]
 
-        # Instance already running
-        if crawler_entry.get().running:
-            instance_id = crawler_entry.get().running_instance.instance_id
-            raise ValueError("An instance is already running for this crawler "
-                             f"({instance_id})")
+    crawler_entry = CrawlRequest.objects.filter(id=crawler_id)
+    data = crawler_entry.values()[0]
 
-        del data['creation_date']
-        del data['last_modified']
+    # Instance already running
+    if crawler_entry.get().running:
+        instance_id = crawler_entry.get().running_instance.instance_id
+        raise ValueError("An instance is already running for this crawler "
+                         f"({instance_id})")
 
-        if data["output_path"] is None:
-            data["output_path"] = CURR_FOLDER_FROM_ROOT
+    del data['creation_date']
+    del data['last_modified']
+
+    if data["output_path"] is None:
+        data["output_path"] = CURR_FOLDER_FROM_ROOT
+    else:
+        if data["output_path"][-1] == "/":
+            data["output_path"] = data["output_path"][:-1]
         else:
-            if data["output_path"][-1] == "/":
-                data["output_path"] = data["output_path"][:-1]
-            else:
-                data["output_path"] = data["output_path"]
+            data["output_path"] = data["output_path"]
 
-        signals = {
-            scrapy.signals.item_scraped: item_scraped,
-            scrapy.signals.request_scheduled: request_sched,
-        }
+    signals = {
+        scrapy.signals.item_scraped: item_scraped,
+        scrapy.signals.request_scheduled: request_sched,
+    }
 
-        instance_id = crawler_manager.start_crawler(data, signals)
+    instance_id = crawler_manager.start_crawler(data, signals)
 
-        instance = create_instance(data['id'], instance_id)
+    instance = create_instance(data['id'], instance_id)
 
     return instance
 
