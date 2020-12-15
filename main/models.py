@@ -324,6 +324,7 @@ class CrawlerInstance(TimeStamped):
     instance_id = models.BigIntegerField(primary_key=True)
     running = models.BooleanField()
 
+
 class DownloadDetail(TimeStamped):
     """
     Details about file downloads requested by crawlers.
@@ -340,3 +341,12 @@ class DownloadDetail(TimeStamped):
     size = models.PositiveIntegerField(null=True, blank=True)
     progress = models.PositiveIntegerField(null=True, blank=True)
     error_message = models.CharField(max_length=1000, null=True, blank=True)
+
+
+class Log(TimeStamped):
+    instance = models.ForeignKey(CrawlerInstance, on_delete=models.CASCADE,
+                                 related_name="log")
+    log_message = models.CharField(max_length=2000, blank=True, null=True)
+    logger_name = models.CharField(max_length=50, blank=True, null=True)
+    log_level = models.CharField(max_length=10, blank=True, null=True)
+    raw_log = models.CharField(max_length=5000, blank=True, null=True)
