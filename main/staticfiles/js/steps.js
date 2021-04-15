@@ -4,7 +4,7 @@
  * @param  {Node} output_element [The element where the steps json are going to be placed]
  * @param  {String} json_path [The path of the json with the steps information]
  */
-function load_steps(interface_root_element, output_element, json_path="/static/json/step_signatures.json"){
+function load_steps_interface(interface_root_element, output_element, json_path="/static/json/steps_signature.json"){
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
@@ -47,18 +47,21 @@ function init_steps_creation_interface(interface_root_element, output_element, s
 
 
     add_block_button = document.createElement("a")
+    add_block_button.innerText = "Add step"
     add_block_button.className="btn btn-primary step-controler-buttons"
     add_block_button.style.color = "white"
+    add_block_button.type = "button"
     add_block_button.onclick = function(){step_board.add_block(step_list)}
-    add_block_button.innerText = "Add step"
 
 
     save_button = document.createElement("button")
     save_button.innerText = "Save steps"
     save_button.className="btn btn-primary step-controler-buttons"
     save_button.style.color = "white"
+    save_button.type = "button"
     interface_root_element.save_button = save_button
     interface_root_element.save_button.onclick = function(){build_json(step_board, output_element)}
+
 
     step_controler.appendChild(add_block_button)
     step_controler.appendChild(save_button)
@@ -73,11 +76,14 @@ function init_steps_creation_interface(interface_root_element, output_element, s
     interface_root_element.steps_creation_interface = steps_creation_interface
     interface_root_element.step_json_input = output_element
 
+    interface_root_element.load_steps = load_steps
+    interface_root_element.load_steps(JSON.parse(output_element.value), step_list)
 }
 
 //------------------- step board ------------------------------
 
 /**
+    interface_root_element.load_steps(output_element.value, step_list)
  * Init the step_board, the element that will store the steps created by the user.
  * @param  {List} step_list [A list with the steps information]
  * @return {Node} step_board [The step_board html element already initialized]
@@ -89,15 +95,19 @@ function init_step_board(step_list){
     step_board.get_last_depth = get_last_depth
     step_board.style.marginTop = "1em"
     step_board.style.marginBottom = "1em"
-    step_board.add_block = function(step_list, index = -1){
-        steps_creation_interface = find_parent_with_attr_worth(this, "steps_creation_interface")
-        step_board = steps_creation_interface.step_board
-        step_block = init_block(step_list, step_board.get_last_depth())
-        if(index != -1){
-            step_board.insertBefore(step_block, step_board.children[index])
-        }else{
-            step_board.appendChild(step_block)
+    step_board.add_block = function(step_list, index = -1, depth = null){
+        if(depth == null){
+            depth = step_board.get_last_depth();
         }
+        steps_creation_interface = find_parent_with_attr_worth(this, "steps_creation_interface")
+        step_board = steps_creation_interface.step_board;
+        step_block = init_block(step_list, depth);
+        if(index != -1){
+            step_board.insertBefore(step_block, step_board.children[index]);
+        }else{
+            step_board.appendChild(step_block);
+        }
+        return step_block;
     }    
     return step_board
 }    
@@ -127,6 +137,82 @@ function get_last_depth(){
 
 //--------------------- json build functions ---------------------------------
 
+function load_steps(json_steps, step_list){
+    if(json_steps.step == "root"){
+        for(child of json_steps.children)
+            this.load_steps(child, step_list);
+        return;
+    }
+
+    step_board = find_parent_with_attr_worth(this, "root").steps_creation_interface.step_board;
+    block = step_board.add_block(step_list, depth = json_steps.depth);
+
+    var i = 0;
+    while(i < block.select.length && block.select.options[i].value != json_steps.step.replace(/_/g, " "))
+        i++;
+
+    if(i == block.select.length){
+        alert("This version doesn't have support to the step:" + json_steps.step)
+        return;
+    }else{
+        block.select.selectedIndex = i;
+        block.select.onchange();
+    }
+
+    //if is a iteration step
+    step_arguments = json_steps.arguments;
+
+    if("children" in json_steps){
+
+        if(json_steps.step == "for_each"){
+            block.iterator_input.value = json_steps.iterator
+            if("call" in json_steps.iterable){
+                step_arguments = json_steps.iterable.call.arguments
+                block.iterable_select.value = json_steps.iterable.call.step;
+                block.iterable_select.onchange();
+            }else if("object" in json_steps.iterable){
+                block.iterable_select.value = "object";
+                block.iterable_select.onchange();
+            }
+            refill_parameters(json_steps.iterable.call.arguments, block)
+        }else if(json_steps.step == "for_each_page_in")
+            refill_parameters(json_steps.arguments, block)
+        
+
+        for(child of json_steps["children"]){
+            this.load_steps(child, step_list);
+        }
+    }else{
+        refill_parameters(step_arguments, block)
+    }
+}
+
+function refill_parameters(args, block){
+    params = []
+    for(param_input of block.params)
+        params = params.concat(param_input.children[0].placeholder.replace(/ /g, "_"))
+    
+    optional_params = []
+    for(optional_param_button of block.new_parameter_button.dropdown_menu.children)
+        optional_params = optional_params.concat(optional_param_button.innerHTML.replace(/ /g, "_"))
+    alert("list " + params)
+    alert("list " + optional_params)
+    for(arg in args){
+        alert(arg)
+        arg_index = params.findIndex(function(a){return a==arg})
+        alert(arg_index)
+        if(arg_index!=-1){
+            block.params[arg_index].children[0].value = args[arg] 
+        }else{
+            arg_index = optional_params.findIndex(function(a){return a==arg})
+            alert(arg_index)
+            block.new_parameter_button.dropdown_menu.children[arg_index].onclick()
+            last_index =  block.params.length-1
+            block.params[last_index].children[0].value = args[arg]
+        }
+    }
+}
+
 /**
  * This function gets the steps added by user in the step_board and builds the
  * steps json, that describes the steps to be performed on the page to be crawled. 
@@ -140,13 +226,15 @@ function build_json(step_board, output_element){
         children: []
     }
 
-    stack = [root_step]
+    stack = [root_step];
     for(step_element of step_board.children){
-        indent = step_element.depth - stack[stack.length-1].depth
+        indent = step_element.depth - stack[stack.length-1].depth;
 
-        step_dict = get_step_json_format(step_element)
+        step_dict = get_step_json_format(step_element);
 
+        
         if(indent == 1){
+            
             stack[stack.length-1].children.push(step_dict)
             stack.push(step_dict)
         }else if(indent == 0){
@@ -177,21 +265,22 @@ function get_step_json_format(block){
         step : param_name,
         depth : block.depth,
     }
-    if(param_name == "for each"){
-        step_dict.iterator = block.iterator_input.value
+    if(param_name == "for_each"){
+        step_dict.iterator = block.iterator_input.value.replace(/ /g, "_")
         step_dict.children = []
         step_dict.iterable = {call:{}}
         step_dict.iterable.call = {
-            step: block.iterable_select.value,
+            step: block.iterable_select.value.replace(/ /g, "_"),
             arguments:{}
         }
         for(param of block.params){
             step_dict.iterable.call.arguments[param.children[0].placeholder.replace(/ /g, "_")] = param.children[0].value
         }
-    }else if(param_name == "for each page in"){
+    }else if(param_name == "for_each_page_in"){
         step_dict.children = []
+        step_dict.arguments = {}
         for(param of block.params){
-            step_dict[param.children[0].placeholder.replace(/ /g, "_")] = param.children[0].value
+            step_dict.arguments[param.children[0].placeholder.replace(/ /g, "_")] = param.children[0].value
         }
     }else {
         step_dict.arguments = {}
