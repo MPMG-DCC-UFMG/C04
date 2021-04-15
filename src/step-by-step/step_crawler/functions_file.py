@@ -4,27 +4,24 @@ import time
 import uuid
 from cssify import cssify
 from PIL import Image
-from captcha_solver.image_solver import ImageSolver
+#from captcha_solver.image_solver import ImageSolver
 from pyext import RuntimeModule
 
 
-def range_(stop):
-    return [i for i in range(stop)]
+def espere(segundos):
+    time.sleep(segundos)
 
+def intervalo(parada):
+    return [i for i in range(parada)]
 
-def print_(word):
+def print_(word):#used for tests
     return word
-
-
-def espere(segs):
-    time.sleep(segs)
-
-
-def gera_nome_arquivo():
+    
+def gera_nome_do_arquivo():
     return "./{}.html".format(uuid.uuid4().hex)
 
 
-async def wait_page(page):
+async def espere_a_pagina(page):
     jsWait = "document.readyState === 'complete' || \
               document.readyState === 'iteractive'"
     while not (await page.evaluate(jsWait)):
@@ -34,13 +31,13 @@ async def wait_page(page):
 async def clique(page, xpath):
     await page.waitForXPath(xpath)
     await page.click(cssify(xpath))
-    await wait_page(page)
+    await espere_a_pagina(page)
 
 
-async def selecione(page, xpath, opcao):
+async def selecione_isso_em(page, option, xpath):
     await page.waitForXPath(xpath)
-    await page.type(cssify(xpath), opcao)
-    await wait_page(page)
+    await page.type(cssify(xpath), option)
+    await espere_a_pagina(page)
 
 
 async def salva_pagina(page):
@@ -49,7 +46,7 @@ async def salva_pagina(page):
     return body
 
 
-async def opcoes(page, xpath, exceto=None):
+async def opcoes_em(page, xpath, exceto=None):
     if exceto is None:
         exceto = []
     options = []
@@ -60,7 +57,7 @@ async def opcoes(page, xpath, exceto=None):
     return [value for value in options if value not in exceto]
 
 
-async def for_clicavel(page, xpath):
+async def e_clicavel(page, xpath):
     try:
         await clique(page, xpath)
         return True
@@ -69,7 +66,7 @@ async def for_clicavel(page, xpath):
 
 
 
-async def pegue_os_links_da_paginacao(page, xpath_dos_botoes, xpath_dos_links, indice_do_botao_proximo=-1):
+async def pegue_os_links_da_paginacao(page, xpath_dos_botoes, xpath_dos_links, indice_do_botao_de_proximo=-1):
     clickable = True
     urls = []
     while clickable:
@@ -78,7 +75,7 @@ async def pegue_os_links_da_paginacao(page, xpath_dos_botoes, xpath_dos_links, i
 
         buttons = await page.xpath(xpath_dos_botoes)
         if len(buttons) != 0:
-            next_button = buttons[indice_do_botao_proximo]
+            next_button = buttons[indice_do_botao_de_proximo]
             before_click = await page.content()
             await next_button.click()
             after_click = await page.content()
@@ -93,7 +90,7 @@ async def digite(page, xpath, texto):
 
 
 
-async def nesse_elemento_esta_escrito(page, xpath, texto):
+async def esta_escrito_em(page, texto, xpath):
     elements = await page.xpath(xpath)
     if len(elements):
         element = elements[0]
@@ -108,32 +105,32 @@ async def nesse_elemento_esta_escrito(page, xpath, texto):
         return False
 
 
-async def break_image_captcha(page, xpath_input, xpath_output, preprocessing=None):
-    """This step downloads the captcha image then solves it and fills its respective form field
+# async def quebre_o_capcha(page, xpath_do_input, xpath_do_output, preprocessamento=None):
+#     """This step downloads the captcha image then solves it and fills its respective form field
 
-        :param page : a pyppeteer page
-        :param xpath_input : XPATH of the captcha image element
-        :param xpath_output : XPATH of the form field for captcha text.
-        :param preprocessing (optional): The preprocessing function, to be applied
-                                         before character recognition. Defaults to None.
-        :returns text: the string representing the captcha characters
-    """
+#         :param page : a pyppeteer page
+#         :param xpath_do_input : XPATH of the captcha image element
+#         :param xpath_do_output : XPATH of the form field for captcha text.
+#         :param preprocessamento (optional): The preprocessing function, to be applied
+#                                          before character recognition. Defaults to None.
+#         :returns text: the string representing the captcha characters
+#     """
 
-    element = (await page.xpath(xpath_input))[0]
-    image_data = await element.screenshot(type='jpeg')
-    image = Image.open(io.BytesIO(image_data))
-    if preprocessing:
-        module = RuntimeModule.from_string("preprocessing", preprocessing)
-        solver = ImageSolver(preprocessing=module.preprocessing)
-    else:
-        solver = ImageSolver()
-    text = solver.solve(image=image)
-    type_function = f"(text) => {{ (document.querySelector('{cssify(xpath_output)}')).value = text; }}"
-    await page.evaluate(type_function, text)
-    return text
+#     element = (await page.xpath(xpath_do_input))[0]
+#     image_data = await element.screenshot(type='jpeg')
+#     image = Image.open(io.BytesIO(image_data))
+#     if preprocessamento:
+#         module = RuntimeModule.from_string("preprocessing", preprocessamento)
+#         solver = ImageSolver(preprocessing=module.preprocessing)
+#     else:
+#         solver = ImageSolver()
+#     text = solver.solve(image=image)
+#     type_function = f"(text) => {{ (document.querySelector('{cssify(xpath_do_output)}')).value = text; }}"
+#     await page.evaluate(type_function, text)
+#     return text
 
 
-async def element_in_page(page, xpath):
+async def elemento_existe_na_pagina(page, xpath):
     """This step returns True if there's any element given a xpath, otherwise, returns False
 
         :param page : a pyppeteer page
