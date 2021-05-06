@@ -1,6 +1,6 @@
 import os
 import scrapy
-from scrapy.crawler import CrawlerProcess
+from scrapy.crawler import CrawlerRunner
 from twisted.trial.unittest import TestCase
 
 import scrapy_puppeteer
@@ -34,7 +34,7 @@ class ScrapyPuppeteerTestCase(TestCase):
                 },
                 'DOWNLOAD_DELAY': 0
             }
-        self.process = CrawlerProcess(settings=self.settings)
+        self.process = CrawlerRunner(settings=self.settings)
 
     def test_items_number(self):
         crawler = self.process.create_crawler(self.PuppeteerSpider)
