@@ -3,6 +3,7 @@ import scrapy
 from scrapy.crawler import CrawlerProcess
 from twisted.trial.unittest import TestCase
 
+import unittest
 import scrapy_puppeteer
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
