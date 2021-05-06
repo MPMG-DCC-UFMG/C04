@@ -31,7 +31,8 @@ class ScrapyPuppeteerTestCase(TestCase):
         self.settings = custom_settings = {
                 'DOWNLOADER_MIDDLEWARES': {
                     'scrapy_puppeteer.PuppeteerMiddleware': 800
-                }
+                },
+                'DOWNLOAD_DELAY': 0
             }
         self.process = CrawlerProcess(settings=self.settings)
 
