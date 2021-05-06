@@ -18,7 +18,7 @@ class ScrapyPuppeteerTestCase(unittest.TestCase):
         items = []
 
         def start_requests(self):
-            yield scrapy_puppeteer.PuppeteerRequest(
+            yield scrapy.Request(
                 "file://" + os.path.join(THIS_DIR, "test_files", "test1.html"),
                 wait_until='networkidle2'
             )
