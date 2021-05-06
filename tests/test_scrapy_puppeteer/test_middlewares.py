@@ -1,13 +1,13 @@
 import os
 import scrapy
-from scrapy.crawler import CrawlerRunner
+from scrapy.crawler import CrawlerProcess
 from twisted.trial.unittest import TestCase
 
 import scrapy_puppeteer
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
-class ScrapyPuppeteerTestCase(TestCase):
+class ScrapyPuppeteerTestCase(unittest.TestCase):
     """Test case for the ``scrapy-puppeteer`` package"""
 
     class PuppeteerSpider(scrapy.Spider):
@@ -31,10 +31,9 @@ class ScrapyPuppeteerTestCase(TestCase):
         self.settings = custom_settings = {
                 'DOWNLOADER_MIDDLEWARES': {
                     'scrapy_puppeteer.PuppeteerMiddleware': 800
-                },
-                'DOWNLOAD_DELAY': 0
+                }
             }
-        self.process = CrawlerRunner(settings=self.settings)
+        self.process = CrawlerProcess(settings=self.settings)
 
     def test_items_number(self):
         crawler = self.process.create_crawler(self.PuppeteerSpider)
